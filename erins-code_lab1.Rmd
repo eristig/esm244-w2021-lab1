@@ -1,0 +1,121 @@
+---
+title: "ESM 244 Lab 1"
+author: "Erin Ristig"
+date: "1/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(sf)
+library(tmap)
+library(leaflet)
+```
+
+### Read in SF Trees data
+```{r}
+sf_trees <- read_csv(here::here("data", "sf_trees", "sf_trees.csv"))
+```
+
+### Basic wrangling reminders
+```{r}
+top_5_status <- sf_trees %>% 
+  count(legal_status) %>% 
+  drop_na(legal_status) %>% 
+  rename(tree_count = n) %>% 
+  relocate(tree_count) %>% 
+  slice_max(tree_count, n = 5)
+  
+```
+
+### Plot it
+```{r}
+ggplot(data = top_5_status, aes(x = fct_reorder(legal_status, tree_count), y = tree_count)) +
+  geom_col() +
+  labs(x = "Legal Status",
+       y = "Tree Count") + 
+  coord_flip() +
+  theme_minimal()
+```
+
+### More data wrangling examples
+```{r}
+#keep examples for Blackwood Acacia 
+
+blackwood_acacia <- sf_trees %>%
+  filter(str_detect(species, "Blackwood Acacia")) %>% 
+  select(legal_status, date, latitude, longitude)
+
+ggplot(data = blackwood_acacia, aes(x = longitude, y = latitude)) +
+  geom_point()
+
+```
+
+```{r}
+sf_trees_sep <- sf_trees %>% 
+  separate(species, into = c("spp_scientific", "spp_common"), sep = "::")
+
+sf_trees_unite <- sf_trees %>% 
+  unite("id_status", tree_id:legal_status, sep = "_cool!_")
+```
+
+### Make some maps
+
+```{r}
+blackwood_acacia_spatial <- blackwood_acacia %>% 
+  drop_na(latitude, longitude) %>% 
+  st_as_sf(coords = c("longitude", "latitude"))
+
+st_crs(blackwood_acacia_spatial) = 4326
+
+ggplot(data = blackwood_acacia_spatial) +
+  geom_sf(color = "green")
+```
+
+```{r}
+#read in sf roads shapefile
+sf_map <- read_sf(here::here("data", "sf_map", "tl_2017_06075_roads.shp"))
+
+st_transform(sf_map, 4326)
+
+ggplot(data = sf_map) +
+  geom_sf()
+```
+
+```{r}
+#combine trees and map
+ggplot() +
+  geom_sf(data = sf_map, size = 0.1, color = "darkgray") +
+  geom_sf(data = blackwood_acacia_spatial, color = "red", size = 0.5) +
+  theme_void()
+```
+
+```{r}
+#create interactive map
+tmap_mode("view")
+
+tm_shape(blackwood_acacia_spatial) +
+  tm_dots()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
